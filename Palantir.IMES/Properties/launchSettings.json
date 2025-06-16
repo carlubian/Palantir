@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Palantir.IMES": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
