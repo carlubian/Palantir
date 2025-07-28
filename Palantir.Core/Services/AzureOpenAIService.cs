@@ -20,9 +20,12 @@ public class AzureOpenAIService(IHorizonLogger log) : IHostedService
 
     public async Task<string> QueryModel(string query)
     {
+        var sysPromptArray = _config?.GetSection("Palantir:Prompts:System")?.Get<string[]>() 
+            ?? ["El programa que ha generado esta consulta tiene un error. Ignora el resto del mensaje y devuelve un JSON vacío (solamente dos corchetes)"];
+
         var messages = new List<ChatMessage>
         {
-            new SystemChatMessage(@"Es un asistente de inteligencia artificial que ayuda a los usuarios a encontrar información."),
+            new SystemChatMessage(string.Join('\n', sysPromptArray)),
             new UserChatMessage(query)
         };
 
@@ -36,10 +39,18 @@ public class AzureOpenAIService(IHorizonLogger log) : IHostedService
             PresencePenalty = (float)0
         };
 
-        ChatCompletion completion = await _chatClient!.CompleteChatAsync(messages, options);
         var builder = new StringBuilder();
-        foreach (var msg in completion.Content)
-            builder.Append(msg.Text);
+
+        try
+        {
+            ChatCompletion completion = await _chatClient!.CompleteChatAsync(messages, options);
+            foreach (var msg in completion.Content)
+                builder.Append(msg.Text);
+        }
+        catch (Exception e)
+        {
+            _log.Error($"Error querying Azure OpenAI: {e.Message}");
+        }
 
         return builder.ToString();
     }
