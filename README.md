@@ -40,7 +40,21 @@ The file needs to be located in <code>./Palantir.IMES/appsettings.json</code>
 }
 ```
 
-#### System Prompt
+## System Components
+
+Palantir is divided into the following layers:
+
+- Layer 1 (TBD): A sentiment analysis model that scores each incoming message in the conversation.
+- Layer 2 (IMES): A LLM model that generates hypothesis based on a fragment of conversation.
+- Layer 3 (TBD): A series of LLM models in parallel that "play" a role and decide how they feel about the previous hypothesis.
+
+## Layer 2: IMES
+
+The IMES, or "Intelligent Meaning Extraction System" layer is intended to receive a fragment of
+conversation between two users, and output a list of hypothesis as to what the "other user" is
+meaning to say.
+
+### System Prompt
 
 The current version of the IMES System Prompt is the following:
 
@@ -78,7 +92,7 @@ The current version of the IMES System Prompt is the following:
 Note that the current prompt uses a generic user profile. Subsequent versions could
 use a database to store and fetch specific profiles for certain users to replace the "Contexto adicional".
 
-#### User Prompt
+### User Prompt
 
 IMES receives as input a list of conversation turns between "Usuario" and "Interlocutor" codified
 as an instance of Palantir.Core.Model.ConversationMessage.
@@ -86,7 +100,7 @@ as an instance of Palantir.Core.Model.ConversationMessage.
 The current test conversation can be found in the following file:
 <pre>Palantir/IMES/Services/ImesService.cs</pre>
 
-#### Demo output
+### Demo output
 
 An invocation to IMES with a LLM-generated fake conversation yields a result like the following:
 
