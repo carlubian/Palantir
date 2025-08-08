@@ -1,0 +1,119 @@
+﻿@page "/counter"
+
+@using System.Text
+@using Armali.Horizon.Messaging
+@using Armali.Horizon.Messaging.Model
+@using Palantir.Core.Model
+
+@rendermode InteractiveServer
+
+@inject IHorizonMessaging Messaging
+
+<PageTitle>IMES</PageTitle>
+
+<div class="container-fluid full-height">
+    <div class="row h-100">
+        <!-- Primera columna -->
+        <div class="col-md-4 d-flex flex-column border-end">
+            <h3 class="text-center mt-3">Turnos de Conversación</h3>
+
+            <!-- Lista de turnos -->
+            <div class="flex-grow-1 scroll-area conversation-list px-3 py-2">
+                <ul class="list-group">
+                    @foreach (var turno in Turnos)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div><strong>@turno.Speaker:</strong> @turno.Content</div>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => EliminarTurno(turno)">Eliminar</button>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+            <!-- Formulario -->
+            <div class="p-3 border-top">
+                <EditForm Model="@nuevoTurno" OnValidSubmit="AgregarTurno">
+                    <DataAnnotationsValidator />
+                    <div class="mb-2">
+                        <InputText class="form-control" @bind-Value="nuevoTurno.Speaker" placeholder="Speaker" />
+                    </div>
+                    <div class="mb-2">
+                        <InputText class="form-control" @bind-Value="nuevoTurno.Contenido" placeholder="Contenido" />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Añadir turno</button>
+                </EditForm>
+            </div>
+
+            <!-- Botones -->
+            <div class="py-3 border-top d-flex justify-content-center gap-2">
+                <button class="btn btn-danger" @onclick="VaciarTurnos">Vaciar</button>
+                <button class="btn btn-success" @onclick="ProcesarTurnos">Procesar</button>
+            </div>
+        </div>
+
+        <!-- Segunda columna -->
+        <div class="col-md-8 d-flex flex-column">
+            <h3 class="text-center mt-3">Resultado</h3>
+            <div class="flex-grow-1 px-3 py-2">
+                <textarea class="form-control read-only-textarea" readonly>@Resultado</textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ConversationTurn> Turnos = new();
+    private Turno nuevoTurno = new();
+    private string Resultado = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Messaging.OnMessageReceived += ReceiveOutput;
+        Messaging.Listen("Palantir.IMES", "Results");
+    }
+
+    private void AgregarTurno()
+    {
+        if (!string.IsNullOrWhiteSpace(nuevoTurno.Speaker) &&
+            !string.IsNullOrWhiteSpace(nuevoTurno.Contenido))
+        {
+            Turnos.Add(new ConversationTurn { Speaker = nuevoTurno.Speaker, Content = nuevoTurno.Contenido });
+            nuevoTurno = new(); // Reset formulario
+        }
+    }
+
+    private void EliminarTurno(ConversationTurn turno)
+    {
+        Turnos.Remove(turno);
+    }
+
+    private void VaciarTurnos()
+    {
+        Turnos.Clear();
+        Resultado = "";
+    }
+
+    private async Task ProcesarTurnos()
+    {
+        var conversation = new ConversationMessage();
+        conversation.Turns = Turnos;
+
+        await Messaging.SendMessage("Conversation", conversation);
+    }
+
+    private void ReceiveOutput(MessagePayload payload)
+    {
+        Console.WriteLine($"Received output of type {payload.TypeHint}");
+        var subclass = payload.Deserialize<OutputMessage>();
+        var output = subclass?.ModelResponse;
+
+        Console.WriteLine($"ModelResponse is {output}");
+        Resultado = output ?? "Unknown subclass";
+    }
+
+    public class Turno
+    {
+        public string Speaker { get; set; } = "";
+        public string Contenido { get; set; } = "";
+    }
+}
