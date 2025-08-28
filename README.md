@@ -2,38 +2,35 @@
 Generative AI system to interpret and propose hypothesis based on conversations.
 
 ## App configuration
-Palantir needs a Garnet server in order to pass messages and events between its components.
-This server can be deployed locally using a docker command like the following:
-<pre>docker run -d -p 6400:6379 --name garnet-palantir ghcr.io/microsoft/garnet</pre>
+Palantir is designed to be deployed as part of a .NET Aspire architecture.
 
-In addition, the following appsetting.json files are needed:
+It has the following components:
+- **ApiService**: Implements the SignalR hub and hosts the services required to query and process the model response.
+- **AppHost**: Used to run the Aspire Dashboard and orchestrate the rest of the system.
+- **Core**: Defines the model classes and contains the implementation of the services used by the ApiService.
+- **Web**: Contains a Blazor website that exposes a UI so that users can interact with the model API.
 
-### Palantir.IMES
-The file needs to be located in <code>./Palantir.IMES/appsettings.json</code>
+### Palantir.ApiService
+The file needs to be located in <code>./Palantir.ApiService/appsettings.json</code>
 
 ```json
 {
-  "Horizon": {
-    "Component": "Palantir.IMES",
-    "Logs": {
-      "Provider": "Seq",
-      "Endpoint": "http://localhost:5341",
-      "LogLevel": "Debug"
-    },
-    "Messaging": {
-      "Provider": "Garnet",
-      "Endpoint": "localhost:6400"
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
     }
   },
+  "AllowedHosts": "*",
   "Palantir": {
     "Cloud": {
-      "Endpoint": "https://***.openai.azure.com/", // Replace with Azure OpenAI endpoint
-      "ApiKey": "***", // Replace with Azure OpenAI API key
-      "Deployment": "gpt-4.1" // Replace with Azure OpenAI deployment name
+      "Endpoint": "", // Replace with the Azure endpoint
+      "ApiKey": "", // Replace with the Azure API key
+      "Deployment": "gpt-4.1" // Replace with the Azure deployment name
     },
     "Prompts": {
       "System": [
-        "" // Insert contents of the IMES System Prompt
+        "", // Replace with the system prompt
       ]
     }
   }
@@ -44,9 +41,9 @@ The file needs to be located in <code>./Palantir.IMES/appsettings.json</code>
 
 Palantir is divided into the following layers:
 
-- Layer 1 (TBD): A sentiment analysis model that scores each incoming message in the conversation.
-- Layer 2 (IMES): A LLM model that generates hypothesis based on a fragment of conversation.
-- Layer 3 (TBD): A series of LLM models in parallel that "play" a role and decide how they feel about the previous hypothesis.
+- Layer 1 (TBD): Queries a sentiment analysis model that scores each incoming message in the conversation.
+- Layer 2 (IMES): Queries an LLM model that generates hypothesis based on a fragment of conversation.
+- Layer 3 (TBD): Queries a series of LLM models in parallel that "play" a role and decide how they feel about the previous hypothesis.
 
 ## Layer 2: IMES
 
@@ -77,11 +74,11 @@ The current version of the IMES System Prompt is the following:
   "# Formato de respuesta",
   "La salida debe ser un JSON válido que siga el siguiente esquema:",
   "{",
-  "    \"hipotesis\":",
+  "    \"Entries\":",
   "    [",
   "        {",
-  "            \"contenido\": \"<TEXTO QUE DESCRIBE LA HIPÓTESIS>\",",
-  "            \"certeza\": 0.5 <NÚMERO ENTRE 0 Y 1 QUE INDICA LA PROBABILIDAD DE QUE ESTA HIPÓTESIS SEA CIERTA>",
+  "            \"Content\": \"<TEXTO QUE DESCRIBE LA HIPÓTESIS>\",",
+  "            \"Probability\": 0.5 <NÚMERO ENTRE 0 Y 1 QUE INDICA LA PROBABILIDAD DE QUE ESTA HIPÓTESIS SEA CIERTA>",
   "        },",
   "        ...",
   "    ]",
@@ -95,10 +92,7 @@ use a database to store and fetch specific profiles for certain users to replace
 ### User Prompt
 
 IMES receives as input a list of conversation turns between "Usuario" and "Interlocutor" codified
-as an instance of Palantir.Core.Model.ConversationMessage.
-
-The current test conversation can be found in the following file:
-<pre>Palantir/IMES/Services/ImesService.cs</pre>
+as an instance of Palantir.Core.Model.Conversation.
 
 ### Demo output
 
@@ -138,9 +132,3 @@ An invocation to IMES with a LLM-generated fake conversation yields a result lik
     ]
 }
 ```
-
-It's apparent that the system is capable of interpreting natural language and making assumptions about
-both direct and indirect language, as well as proposing unlikely (but nevertheless possible) hypothesis.
-
-In addition, the LLM is capable of understanding the output format and creating a valid JSON syntax. This
-is epecially useful to programatically handle that output in further steps or in a UI.
